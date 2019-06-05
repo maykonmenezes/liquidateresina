@@ -5,9 +5,7 @@ from django_currentuser.db.models import CurrentUserField
 from django.urls import reverse
 
 class RamoAtividade(models.Model):
-    """
-    Model representando o ramo de atividade.
-    """
+    
     atividade = models.CharField(max_length=80, help_text='Informe o Ramo de Atividade. (exemplo: alimentação, vestuário, restaurante, etc.)')
     dataCadastro    = models.DateTimeField(verbose_name=u'Cadastrado em', auto_now_add=True, editable=False)   #nao vai aparecer na tela
     CadastradoPor   = CurrentUserField(verbose_name=u'Cadastrado Por', editable=False)
