@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load bootstrap4 %}
+
+{% block title %}Criar a conta de participante{% endblock %}
+
+{% block content %}
+    <h1>Criar conta participante</h1>
+    <p>Por favor, preencha os seguintes dados para efetuar o cadastro do participante:</p>
+    <form action="." method="post">
+      <div class="container-fluid col-md-6">
+        {% bootstrap_form user_form show_label=False show_help=True layout='horizontal' %}
+        {% bootstrap_form profile_form show_label=False layout='horizontal' show_help=True exclude='enderecoComplemento, whatsapp, facebook, twitter, foneFixo, foneCelular2, foneCelular3, pergunta' %}
+
+        {% csrf_token %}
+        <p><input type="submit" class="btn btn-primary btn-lg" value="Criar conta">
+            <a type="button" class="btn" href="{% url 'participante:homepage'%}">Cancelar</button></p>
+      </div>
+    </form>
+{% endblock %}

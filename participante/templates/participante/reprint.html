@@ -1,0 +1,12 @@
+
+{% extends "base.html" %}
+
+{% block title %}Reimpressão{% endblock %}
+
+{% block content %}
+
+<a href="{% url "bcp:print" doc.numeroDocumento %}" class="btn btn-danger a-btn-slide-text btn-sm">
+  <span class="glyphicon glyphicon-print" aria-hidden="true"></span>
+  <span><strong>{{doc.user.profile.nome}} - Nº documento: {{doc.numeroDocumento}}</strong> - Nº de cupons: {{doc.get_cupons}}  </span> </a>
+
+{% endblock %}
