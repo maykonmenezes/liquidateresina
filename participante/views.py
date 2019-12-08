@@ -42,10 +42,17 @@ def search_by_cpf(request):
     if(request.GET.get('q')):
         if 'q' in request.GET is not None:
             cpf = request.GET.get('q')
-            profile = get_object_or_404(Profile, CPF=cpf)
-            user = get_object_or_404(User, username= profile.user.username)
-            docs = DocumentoFiscal.objects.filter(user=user)
-            return render(request, 'participante/detail.html', {'section': 'people','user': profile, 'docs': docs})
+            # profile = get_object_or_404(Profile, CPF=cpf)
+            # user = get_object_or_404(User, username= profile.user.username)
+            try:
+                # user = User.objects.get(username=cpf)
+                profile = Profile.objects.get(CPF=cpf)
+                if profile:
+                    docs = DocumentoFiscal.objects.filter(user=profile.user)
+                    return render(request, 'participante/detail.html', {'section': 'people','user': profile, 'docs': docs})
+            except Profile.DoesNotExist:
+                messages.error(request, 'Participante não cadastrado no sistema')
+                return render(request, 'participante/search_by_cpf.html')
         else:
             messages.error(request, 'CPF não encontrado!')
     return render(request, 'participante/search_by_cpf.html')
@@ -56,26 +63,36 @@ def participante_list(request):
 
 def register2(request):
     if request.method == 'POST':
-        user_form = UserRegistrationForm(request.POST)
-        profile_form = ProfileRegistrationForm(request.POST,
-                                              files=request.FILES)
-        if user_form.is_valid() and profile_form.is_valid():
-            # Create a new user object but avoid saving it yet
-            new_user = user_form.save(commit=False)
-            # Set the chosen password
-            new_user.set_password(user_form.cleaned_data['password'])
-            # Save the User object
-            new_user.save()
-            # Create the user profile
-            new_profile = profile_form.save(commit=False)
-            new_profile.user = new_user
-            new_profile.save()
-            return render(request,
-                          'participante/register_done2.html',
-                          {'new_user': new_profile})
+        try:
+            usuario_aux = User.objects.get(username=request.POST['username'])
+            if usuario_aux:
+                messages.error(request, 'Não foi possivel prosseguir! Já existe um participante com este CPF ou Email cadastrado!')
+                user_form = UserRegistrationForm()
+                profile_form = ProfileRegistrationForm()
+            return render(request, 'participante/register.html', {'user_form': user_form, 'profile_form': profile_form})
+
+        except User.DoesNotExist:
+            user_form = UserRegistrationForm(request.POST)
+            profile_form = ProfileRegistrationForm(request.POST,
+                                                  files=request.FILES)
+            if user_form.is_valid() and profile_form.is_valid():
+                # Create a new user object but avoid saving it yet
+                new_user = user_form.save(commit=False)
+                # Set the chosen password
+                new_user.set_password(user_form.cleaned_data['password'])
+                # Save the User object
+                new_user.save()
+                # Create the user profile
+                new_profile = profile_form.save(commit=False)
+                new_profile.user = new_user
+                new_profile.save()
+                messages.success(request, 'Participante cadastrado com sucesso!')
+                return render(request,
+                              'participante/register_done2.html',
+                              {'new_user': new_profile})
     else:
-        user_form = UserRegistrationForm()
-        profile_form = ProfileRegistrationForm()
+         user_form = UserRegistrationForm()
+         profile_form = ProfileRegistrationForm()
     return render(request, 'participante/register.html', {'user_form': user_form, 'profile_form': profile_form})
 
 def homepage(request):
@@ -119,27 +136,38 @@ def user_login(request):
 
 def register(request):
     if request.method == 'POST':
-        user_form = UserRegistrationForm(request.POST)
-        profile_form = ProfileRegistrationForm(request.POST,
-                                              files=request.FILES)
-        if user_form.is_valid() and profile_form.is_valid():
-            # Create a new user object but avoid saving it yet
-            new_user = user_form.save(commit=False)
-            # Set the chosen password
-            new_user.set_password(user_form.cleaned_data['password'])
-            # Save the User object
-            new_user.save()
-            # Create the user profile
-            new_profile = profile_form.save(commit=False)
-            new_profile.user = new_user
-            new_profile.save()
-            return render(request,
-                          'participante/register_done.html',
-                          {'new_user': new_profile})
+        try:
+            usuario_aux = User.objects.get(username=request.POST['username'])
+            usuario_email = User.objects.get(email=request.POST['email'])
+            if usuario_aux or usuario_email:
+                messages.error(request, 'Erro! Já existe um usuário com o mesmo e-mail')
+                user_form = UserRegistrationForm()
+                profile_form = ProfileRegistrationForm()
+            return render(request, 'participante/registerpart.html', {'user_form': user_form, 'profile_form': profile_form})
+
+        except User.DoesNotExist:
+            user_form = UserRegistrationForm(request.POST)
+            profile_form = ProfileRegistrationForm(request.POST,
+                                                  files=request.FILES)
+            if user_form.is_valid() and profile_form.is_valid():
+                # Create a new user object but avoid saving it yet
+                new_user = user_form.save(commit=False)
+
+                # Set the chosen password
+                new_user.set_password(user_form.cleaned_data['password'])
+                # Save the User object
+                new_user.save()
+                # Create the user profile
+                new_profile = profile_form.save(commit=False)
+                new_profile.user = new_user
+                new_profile.save()
+                return render(request,
+                              'participante/register_done.html',
+                              {'new_user': new_profile})
     else:
         user_form = UserRegistrationForm()
         profile_form = ProfileRegistrationForm()
-    return render(request, 'participante/register2.html', {'user_form': user_form, 'profile_form': profile_form})
+    return render(request, 'participante/registerpart.html', {'user_form': user_form, 'profile_form': profile_form})
 
 
 @login_required
@@ -154,6 +182,7 @@ def edit(request):
             user_form.save()
             profile_form.save()
             messages.success(request, 'Perfil atualizado com sucesso')
+            return render(request, 'participante/dashboard.html')
         else:
             messages.error(request, 'Erro na atualização do perfil')
     else:
@@ -208,6 +237,7 @@ def adddocfiscal(request):
             new_documentoFiscal.lojista = lojista
             # Save the doc object
             new_documentoFiscal.save()
+            messages.success(request, 'Documento adicionado com sucesso!')
             return render(request,
                           'participante/doc_fiscal_done.html',
                           {'new_documentoFiscal': new_documentoFiscal})
@@ -215,37 +245,71 @@ def adddocfiscal(request):
         documentoFiscal_form = UserAddFiscalDocForm()
     return render(request, 'participante/doc_fiscal_add.html', {'documentoFiscal_form': documentoFiscal_form})
 
+
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def adddocfiscalbyop(request, id):
     user = get_object_or_404(User, id=id)
     if request.method == 'POST':
-        documentoFiscal_form = UserAddFiscalDocForm(request.POST,
-                                                    files=request.FILES)
-        cnpj = documentoFiscal_form['lojista_cnpj'].value()
-        numerodoc = documentoFiscal_form['numeroDocumento'].value()
-        if cnpj:
-            lojista = get_object_or_404(Lojista, CNPJLojista=cnpj)
-            user = get_object_or_404(User, id=id)
-            if documentoFiscal_form.is_valid():
-                # Create a new document object but avoid saving it yet
-                new_documentoFiscal = documentoFiscal_form.save(commit=False)
-                # Set the user
-                new_documentoFiscal.user = user
-                new_documentoFiscal.lojista = lojista
-                # Save the doc object
-                new_documentoFiscal.save()
-                return render(request,
-                              'participante/doc_fiscal_done_op.html',
-                              {'new_documentoFiscal': new_documentoFiscal, 'participante': user})
-            else:
-                messages.error(request, 'O documento {} já se encontra cadastrado na nossa base de dados!'.format(numerodoc))
-        else:
+        try:
+            user_aux = User.objects.get(id=id)
+            documentoFiscal_form = UserAddFiscalDocForm(request.POST,
+                                                        files=request.FILES)
+            cnpj = documentoFiscal_form['lojista_cnpj'].value()
+            numerodoc = documentoFiscal_form['numeroDocumento'].value()
+            lojista = Lojista.objects.get(CNPJLojista=cnpj)
+            if user_aux or lojista:
+                if documentoFiscal_form.is_valid():
+                    # Create a new document object but avoid saving it yet
+                    new_documentoFiscal = documentoFiscal_form.save(commit=False)
+                    # Set the user
+                    new_documentoFiscal.user = user_aux
+                    new_documentoFiscal.lojista = lojista
+                    # Save the doc object
+                    new_documentoFiscal.save()
+
+                    return render(request,
+                                  'participante/doc_fiscal_done_op.html',
+                                  {'new_documentoFiscal': new_documentoFiscal, 'participante': user_aux})
+                else:
+                    messages.error(request, 'Ops! parece que algo não está certo.. Verifique se todas as informações estão corretas!')
+        except Lojista.DoesNotExist:
             messages.error(request, 'O lojista do documento ainda não se encontra na nossa base de dados!')
     else:
-        user = get_object_or_404(User, id=id)
         documentoFiscal_form = UserAddFiscalDocForm()
     return render(request, 'participante/doc_fiscal_add_op.html', {'documentoFiscal_form': documentoFiscal_form, 'participante': user})
+
+# @login_required
+# @user_passes_test(lambda u: u.is_superuser)
+# def adddocfiscalbyop(request, id):
+#     user = get_object_or_404(User, id=id)
+#     if request.method == 'POST':
+#         documentoFiscal_form = UserAddFiscalDocForm(request.POST,
+#                                                     files=request.FILES)
+#         cnpj = documentoFiscal_form['lojista_cnpj'].value()
+#         numerodoc = documentoFiscal_form['numeroDocumento'].value()
+#         if cnpj:
+#             lojista = get_object_or_404(Lojista, CNPJLojista=cnpj)
+#             user = get_object_or_404(User, id=id)
+#             if documentoFiscal_form.is_valid():
+#                 # Create a new document object but avoid saving it yet
+#                 new_documentoFiscal = documentoFiscal_form.save(commit=False)
+#                 # Set the user
+#                 new_documentoFiscal.user = user
+#                 new_documentoFiscal.lojista = lojista
+#                 # Save the doc object
+#                 new_documentoFiscal.save()
+#                 return render(request,
+#                               'participante/doc_fiscal_done_op.html',
+#                               {'new_documentoFiscal': new_documentoFiscal, 'participante': user})
+#             else:
+#                 messages.error(request, 'O documento {} já se encontra cadastrado na nossa base de dados!'.format(numerodoc))
+#         else:
+#             messages.error(request, 'O lojista do documento ainda não se encontra na nossa base de dados!')
+#     else:
+#         user = get_object_or_404(User, id=id)
+#         documentoFiscal_form = UserAddFiscalDocForm()
+#     return render(request, 'participante/doc_fiscal_add_op.html', {'documentoFiscal_form': documentoFiscal_form, 'participante': user})
 
 @login_required
 def doclist(request):
